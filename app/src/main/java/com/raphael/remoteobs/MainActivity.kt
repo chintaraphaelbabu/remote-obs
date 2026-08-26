@@ -503,14 +503,15 @@ private fun SceneTile(
             .padding(8.dp)
     ) {
         if (!imageData.isNullOrBlank()) {
-            var bitmap by remember(imageData) { mutableStateOf<Bitmap?>(null) }
+                var bitmap by remember { mutableStateOf<Bitmap?>(null) }
             LaunchedEffect(imageData) {
-                bitmap = withContext(Dispatchers.Default) {
+                    val decodedBitmap = withContext(Dispatchers.Default) {
                     try {
                         val bytes = Base64.decode(imageData, Base64.DEFAULT)
                         BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                     } catch (e: Exception) { null }
                 }
+                    if (decodedBitmap != null) bitmap = decodedBitmap
             }
             bitmap?.let {
                 Image(
