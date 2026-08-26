@@ -65,14 +65,16 @@ The Preview panel is screenshot based.
 
 The polling loop is throttled so there is only one in-flight screenshot request per panel at a time. That prevents stale screenshot requests from piling up when the network or OBS is slow.
 
-### Program panel
+### Multiview panel
 
-The Program panel has two modes.
+The right monitor panel has two modes.
 
-1. If a WHEP playback URL is configured, the app renders a WebRTC/WHEP player.
-2. If no WHEP URL is configured, the app falls back to the same screenshot approach used for Preview.
+1. If a Multiview WHEP URL is configured, the app renders the 30 FPS OBS Multiview projector feed.
+2. If no WHEP URL is configured, the app falls back to the current Program screenshot.
 
-When WHEP is active, the app stops Program screenshot polling to avoid competing traffic and unnecessary decoding work.
+When WHEP is active, the app stops Program and per-scene screenshot polling to avoid competing traffic and unnecessary decoding work.
+
+The relay opens a separate windowed OBS Multiview projector and captures it with FFmpeg. This preserves OBS Virtual Camera for Zoom and other applications.
 
 ## Screenshot request details
 
