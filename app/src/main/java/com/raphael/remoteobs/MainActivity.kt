@@ -369,7 +369,7 @@ private fun MainControlSurface(
                 modifier = Modifier.weight(1f)
             )
             SourcePanel(
-                title = "Program",
+                title = "Multiview",
                 sceneName = state.programScene,
                 imageData = state.programImage,
                 whepUrl = state.settings.whepUrl.ifBlank { null },
@@ -746,9 +746,9 @@ private fun MenuScreen(
                 OutlinedTextField(
                     value = state.settings.whepUrl,
                     onValueChange = onWhepUrlChange,
-                    label = { Text("WHEP URL (WebRTC)") },
+                    label = { Text("Multiview WHEP URL") },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("http://ip:8889/whep/program") },
+                    placeholder = { Text("http://ip:8889/whep/multiview") },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White

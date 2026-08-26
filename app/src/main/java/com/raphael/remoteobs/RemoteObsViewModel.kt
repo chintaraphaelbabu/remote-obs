@@ -544,31 +544,33 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
                             } ?: run { programScreenshotInFlight = false }
                         }
                     }
-                    val thumbnailScenes = _state.value.scenes
-                    repeat(minOf(2, thumbnailScenes.size)) {
-                        if (thumbnailScenes.isEmpty()) return@repeat
-                        var sceneName: String? = null
-                        repeat(thumbnailScenes.size) {
-                            if (sceneName == null) {
-                                if (sceneThumbnailIndex >= thumbnailScenes.size) sceneThumbnailIndex = 0
-                                val candidate = thumbnailScenes[sceneThumbnailIndex].name
-                                sceneThumbnailIndex++
-                                if (sceneThumbnailsInFlight.add(candidate)) sceneName = candidate
+                    if (s.whepUrl.isBlank()) {
+                        val thumbnailScenes = _state.value.scenes
+                        repeat(minOf(2, thumbnailScenes.size)) {
+                            if (thumbnailScenes.isEmpty()) return@repeat
+                            var sceneName: String? = null
+                            repeat(thumbnailScenes.size) {
+                                if (sceneName == null) {
+                                    if (sceneThumbnailIndex >= thumbnailScenes.size) sceneThumbnailIndex = 0
+                                    val candidate = thumbnailScenes[sceneThumbnailIndex].name
+                                    sceneThumbnailIndex++
+                                    if (sceneThumbnailsInFlight.add(candidate)) sceneName = candidate
+                                }
                             }
-                        }
-                        sceneName?.let { requestedScene ->
-                            launch {
-                                gateway?.getSourceScreenshot(
-                                    sourceName = requestedScene,
-                                    imageWidth = 240,
-                                    imageHeight = 135,
-                                    imageQuality = 35
-                                ) { img ->
-                                    if (img != null) {
-                                        updateState { it.copy(sceneImages = it.sceneImages + (requestedScene to img)) }
-                                    }
-                                    sceneThumbnailsInFlight.remove(requestedScene)
-                                } ?: run { sceneThumbnailsInFlight.remove(requestedScene) }
+                            sceneName?.let { requestedScene ->
+                                launch {
+                                    gateway?.getSourceScreenshot(
+                                        sourceName = requestedScene,
+                                        imageWidth = 240,
+                                        imageHeight = 135,
+                                        imageQuality = 35
+                                    ) { img ->
+                                        if (img != null) {
+                                            updateState { it.copy(sceneImages = it.sceneImages + (requestedScene to img)) }
+                                        }
+                                        sceneThumbnailsInFlight.remove(requestedScene)
+                                    } ?: run { sceneThumbnailsInFlight.remove(requestedScene) }
+                                }
                             }
                         }
                     }
