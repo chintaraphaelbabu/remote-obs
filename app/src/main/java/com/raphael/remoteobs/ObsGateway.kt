@@ -66,7 +66,13 @@ class ObsGateway(
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                val message = t.message ?: "WebSocket failure"
+                val message = when {
+                    response != null -> "OBS WebSocket rejected connection (HTTP ${response.code})"
+                    t is java.net.ConnectException -> "Cannot reach OBS at $currentHost:$currentPort. Check the IP, firewall, and OBS WebSocket server."
+                    t is java.net.SocketTimeoutException -> "Connection to OBS timed out at $currentHost:$currentPort. Check that both devices are on the same network."
+                    t is java.net.UnknownHostException -> "OBS host '$currentHost' could not be found. Check the IP address."
+                    else -> "OBS WebSocket failed: ${t.message ?: t.javaClass.simpleName}"
+                }
                 onLog(LogLevel.Error, message)
                 onError(message)
                 onDisconnected(message)
@@ -203,7 +209,12 @@ class ObsGateway(
     }
 
     private fun handleMessage(raw: String) {
-        val message = JSONObject(raw)
+        val message = try {
+            JSONObject(raw)
+        } catch (_: Exception) {
+            onError("OBS sent an invalid WebSocket message")
+            return
+        }
         when (message.optInt("op")) {
             0 -> handleHello(message.optJSONObject("d") ?: JSONObject())
             2 -> handleIdentified()

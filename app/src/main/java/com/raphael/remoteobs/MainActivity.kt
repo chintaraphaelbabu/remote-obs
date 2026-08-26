@@ -52,9 +52,10 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Divider
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -62,6 +63,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -101,19 +103,51 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        hideSystemBars()
         setContent {
-            MaterialTheme {
+            MaterialTheme(
+                colorScheme = remoteObsColorScheme,
+                typography = androidx.compose.material3.Typography()
+            ) {
                 val viewModel: RemoteObsViewModel = viewModel()
                 RemoteObsApp(viewModel)
             }
         }
     }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) hideSystemBars()
+    }
+
+    private fun hideSystemBars() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).run {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+    }
 }
+
+private val remoteObsColorScheme: ColorScheme = darkColorScheme(
+    primary = Color(0xFF7DD3C7),
+    onPrimary = Color(0xFF062A27),
+    secondary = Color(0xFFFFC857),
+    background = Color(0xFF090B0D),
+    surface = Color(0xFF14181C),
+    surfaceVariant = Color(0xFF20262C),
+    onSurface = Color(0xFFE8EDF0),
+    onSurfaceVariant = Color(0xFFA7B0B7),
+    error = Color(0xFFFF6B6B)
+)
 
 @Composable
 private fun WhepPlayer(url: String, modifier: Modifier = Modifier) {
@@ -308,9 +342,12 @@ private fun MainControlSurface(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF111214))
-            .padding(2.dp)
+            .background(Color(0xFF090B0D))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        MainStatusBar(state = state)
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -346,6 +383,60 @@ private fun MainControlSurface(
 }
 
 @Composable
+private fun MainStatusBar(state: UiState) {
+    val statusColor = when (state.connectionState) {
+        ConnectionState.Connected -> Color(0xFF65D6A5)
+        ConnectionState.Connecting -> Color(0xFFFFC857)
+        ConnectionState.Error -> Color(0xFFFF6B6B)
+        ConnectionState.Disconnected -> Color(0xFF8D969E)
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(42.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(
+                text = "REMOTE OBS",
+                color = Color(0xFFE8EDF0),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.8.sp
+            )
+            Text(
+                text = if (state.scenes.isEmpty()) "CONTROL SURFACE" else "${state.scenes.size} SCENES ONLINE",
+                color = Color(0xFF7F8A92),
+                fontSize = 9.sp,
+                letterSpacing = 1.1.sp
+            )
+        }
+        Row(
+            modifier = Modifier
+                .border(1.dp, statusColor.copy(alpha = 0.55f), RoundedCornerShape(3.dp))
+                .background(statusColor.copy(alpha = 0.09f), RoundedCornerShape(3.dp))
+                .padding(horizontal = 11.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .background(statusColor, RoundedCornerShape(50))
+            )
+            Text(
+                text = state.connectionLabel.uppercase(),
+                color = statusColor,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp
+            )
+        }
+    }
+}
+
+@Composable
 private fun SceneGrid(
     state: UiState,
     columns: Int,
@@ -366,6 +457,7 @@ private fun SceneGrid(
                 scene = scene,
                 previewScene = state.previewScene,
                 programScene = state.programScene,
+                pendingTakeScene = state.pendingTakeScene,
                 height = tileHeight,
                 onClick = { onSceneClick(scene.name) }
             )
@@ -378,6 +470,7 @@ private fun SceneTile(
     scene: SceneEntry,
     previewScene: String,
     programScene: String,
+    pendingTakeScene: String,
     height: Dp,
     onClick: () -> Unit
 ) {
@@ -385,17 +478,27 @@ private fun SceneTile(
         scene.name == programScene -> Color(0xFFFF3C41)
         scene.name == previewScene -> Color(0xFF00D95C)
         scene.pinned -> Color(0xFF8FD2FF)
-        else -> Color(0xFF7A7F86)
+        else -> Color(0xFF4B555D)
     }
     Box(
         modifier = Modifier
             .height(height)
             .fillMaxWidth()
-            .border(2.dp, borderColor, RoundedCornerShape(2.dp))
-            .background(Color.Black)
+            .border(if (scene.name == pendingTakeScene) 3.dp else 1.dp, borderColor, RoundedCornerShape(4.dp))
+            .background(Color(0xFF12161A), RoundedCornerShape(4.dp))
             .clickable(onClick = onClick)
             .padding(8.dp)
     ) {
+        if (scene.name == pendingTakeScene && scene.name != programScene) {
+            Text(
+                text = "TAKE",
+                color = Color(0xFFFFC857),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.1.sp,
+                modifier = Modifier.align(Alignment.TopEnd)
+            )
+        }
         Text(
             text = scene.name,
             color = Color(0xFFE0E3E7),
@@ -419,8 +522,8 @@ private fun SourcePanel(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .border(1.dp, Color(0xFF7A7F86), RoundedCornerShape(4.dp))
-            .background(Color.Black)
+            .border(2.dp, borderColor.copy(alpha = 0.72f), RoundedCornerShape(6.dp))
+            .background(Color(0xFF050607), RoundedCornerShape(6.dp))
     ) {
         if (!whepUrl.isNullOrBlank()) {
             WhepPlayer(url = whepUrl, modifier = Modifier.fillMaxSize())
@@ -447,20 +550,35 @@ private fun SourcePanel(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        listOf(Color.Transparent, Color(0xCC050607))
+                    )
+                )
                 .padding(10.dp)
         ) {
             Text(
-                text = title,
-                color = Color(0xFFD7DBE0),
+                text = title.uppercase(),
+                color = borderColor,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.4.sp,
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
             if (sceneName.isNotBlank()) {
-                Text(
-                    text = sceneName,
-                    color = borderColor,
-                    modifier = Modifier.align(Alignment.TopStart)
-                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .background(Color(0xCC050607), RoundedCornerShape(3.dp))
+                        .padding(horizontal = 8.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        text = sceneName,
+                        color = Color(0xFFE8EDF0),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }
@@ -506,7 +624,10 @@ private fun MenuScreen(
             TextButton(onClick = onClose) { Text("Close") }
         }
 
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1E23))) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF171C20)),
+            shape = RoundedCornerShape(8.dp)
+        ) {
             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Connection", color = Color.White, fontWeight = FontWeight.SemiBold)
                 OutlinedTextField(
@@ -548,7 +669,10 @@ private fun MenuScreen(
             }
         }
 
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1E23))) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF171C20)),
+            shape = RoundedCornerShape(8.dp)
+        ) {
             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Behavior", color = Color.White, fontWeight = FontWeight.SemiBold)
                 SettingToggleRow("Auto-connect", state.settings.autoConnect, onAutoConnectChange)
@@ -584,7 +708,10 @@ private fun MenuScreen(
             }
         }
 
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1E23))) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF171C20)),
+            shape = RoundedCornerShape(8.dp)
+        ) {
             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Transitions", color = Color.White, fontWeight = FontWeight.SemiBold)
                 Row(
@@ -611,7 +738,10 @@ private fun MenuScreen(
             }
         }
 
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1E23))) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF171C20)),
+            shape = RoundedCornerShape(8.dp)
+        ) {
             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Scenes", color = Color.White, fontWeight = FontWeight.SemiBold)
                 Button(onClick = onOpenRearrange) { Text("Rearrange scenes") }
@@ -623,7 +753,10 @@ private fun MenuScreen(
             }
         }
 
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1E23))) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF171C20)),
+            shape = RoundedCornerShape(8.dp)
+        ) {
             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Diagnostics", color = Color.White, fontWeight = FontWeight.SemiBold)
                 if (state.connectionTestResult != null) {

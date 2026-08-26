@@ -226,7 +226,7 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
         if (index > 0) {
             order.removeAt(index)
             order.add(index - 1, sceneName)
-            updateSettings { it.copy(sceneOrder = order) }
+            updateSceneArrangement(order)
         }
     }
 
@@ -236,7 +236,7 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
         if (index in 0 until order.lastIndex) {
             order.removeAt(index)
             order.add(index + 1, sceneName)
-            updateSettings { it.copy(sceneOrder = order) }
+            updateSceneArrangement(order)
         }
     }
 
@@ -245,7 +245,18 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
         if (!pinned.add(sceneName)) {
             pinned.remove(sceneName)
         }
-        updateSettings { it.copy(pinnedScenes = pinned) }
+        updateState {
+            val updatedSettings = it.settings.copy(pinnedScenes = pinned)
+            it.copy(
+                settings = updatedSettings,
+                scenes = mergeSceneOrdering(
+                    it.scenes.map { scene -> scene.name },
+                    updatedSettings.sceneOrder,
+                    updatedSettings.pinnedScenes
+                )
+            )
+        }
+        settingsStore.save(_state.value.settings)
     }
 
     fun saveAndApplyCurrentSettings() {
@@ -404,12 +415,7 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private fun currentSceneOrder(): List<String> {
-        val savedOrder = _state.value.settings.sceneOrder
-        return if (savedOrder.isNotEmpty()) {
-            savedOrder
-        } else {
-            _state.value.scenes.map { it.name }
-        }
+        return _state.value.scenes.map { it.name }
     }
 
     private fun handleTransitionList(transitions: List<String>, selectedTransition: String, duration: Int) {
@@ -452,6 +458,21 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
         updateState {
             val updated = transform(it.settings)
             it.copy(settings = updated)
+        }
+        settingsStore.save(_state.value.settings)
+    }
+
+    private fun updateSceneArrangement(order: List<String>) {
+        updateState {
+            val updatedSettings = it.settings.copy(sceneOrder = order)
+            it.copy(
+                settings = updatedSettings,
+                scenes = mergeSceneOrdering(
+                    it.scenes.map { scene -> scene.name },
+                    updatedSettings.sceneOrder,
+                    updatedSettings.pinnedScenes
+                )
+            )
         }
         settingsStore.save(_state.value.settings)
     }
