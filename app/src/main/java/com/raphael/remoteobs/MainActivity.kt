@@ -59,6 +59,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -103,6 +104,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
+import kotlin.math.ceil
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -253,7 +255,7 @@ private fun RemoteObsApp(viewModel: RemoteObsViewModel) {
                 .padding(paddingValues)
         ) {
             val drawerWidth = if (maxWidth < 700.dp) maxWidth * 0.88f else maxWidth * 0.70f
-            val columns = if (maxWidth < 700.dp) 2 else 4
+            val columns = state.settings.sceneColumns
             val scale = if (state.settings.largeControls) 1.15f else 1f
 
             RightEdgeDrawer(
@@ -298,6 +300,10 @@ private fun RemoteObsApp(viewModel: RemoteObsViewModel) {
                             onKeepScreenAwakeChange = viewModel::setKeepScreenAwake,
                             onHapticsChange = viewModel::setHapticsEnabled,
                             onLargeControlsChange = viewModel::setLargeControls,
+                            onSceneDisplayCountChange = viewModel::setSceneDisplayCount,
+                            onPreviewHeightChange = viewModel::setPreviewHeightPercent,
+                            onSceneColumnsChange = viewModel::setSceneColumns,
+                            onToggleLayoutEditMode = viewModel::toggleLayoutEditMode,
                             onWhepUrlChange = viewModel::setWhepUrl,
                             onTransitionChange = viewModel::setSelectedTransition,
                             onTransitionDurationChange = viewModel::setTransitionDuration,
@@ -351,7 +357,7 @@ private fun MainControlSurface(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1.35f),
+                .weight(state.settings.previewHeightPercent.toFloat()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             SourcePanel(
@@ -377,7 +383,8 @@ private fun MainControlSurface(
             columns = sceneColumns,
             scale = scale,
             onSceneClick = onSceneClick,
-            modifier = Modifier.weight(0.95f)
+            maxScenes = state.settings.sceneDisplayCount,
+            modifier = Modifier.weight((100 - state.settings.previewHeightPercent).toFloat())
         )
     }
 }
@@ -442,25 +449,31 @@ private fun SceneGrid(
     columns: Int,
     scale: Float,
     onSceneClick: (String) -> Unit,
+    maxScenes: Int,
     modifier: Modifier = Modifier
 ) {
-    val tileHeight = if (scale > 1f) 110.dp else 95.dp
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(columns),
-        modifier = modifier.fillMaxWidth(),
-        userScrollEnabled = false,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(state.scenes, key = { it.name }) { scene ->
-            SceneTile(
-                scene = scene,
-                previewScene = state.previewScene,
-                programScene = state.programScene,
-                pendingTakeScene = state.pendingTakeScene,
-                height = tileHeight,
-                onClick = { onSceneClick(scene.name) }
-            )
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val visibleScenes = state.scenes.take(maxScenes)
+        val rowCount = ceil(visibleScenes.size.toFloat() / columns).toInt().coerceAtLeast(1)
+        val tileHeight = ((maxHeight - 8.dp * (rowCount - 1)) / rowCount)
+            .coerceIn(if (scale > 1f) 58.dp else 48.dp, 180.dp)
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(columns),
+            modifier = Modifier.fillMaxSize(),
+            userScrollEnabled = false,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(visibleScenes, key = { it.name }) { scene ->
+                SceneTile(
+                    scene = scene,
+                    previewScene = state.previewScene,
+                    programScene = state.programScene,
+                    pendingTakeScene = state.pendingTakeScene,
+                    height = tileHeight,
+                    onClick = { onSceneClick(scene.name) }
+                )
+            }
         }
     }
 }
@@ -599,6 +612,10 @@ private fun MenuScreen(
     onKeepScreenAwakeChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onLargeControlsChange: (Boolean) -> Unit,
+    onSceneDisplayCountChange: (Int) -> Unit,
+    onPreviewHeightChange: (Int) -> Unit,
+    onSceneColumnsChange: (Int) -> Unit,
+    onToggleLayoutEditMode: () -> Unit,
     onWhepUrlChange: (String) -> Unit,
     onTransitionChange: (String) -> Unit,
     onTransitionDurationChange: (String) -> Unit,
@@ -679,6 +696,32 @@ private fun MenuScreen(
                 SettingToggleRow("Keep screen awake", state.settings.keepScreenAwake, onKeepScreenAwakeChange)
                 SettingToggleRow("Haptic feedback on successful take", state.settings.hapticsEnabled, onHapticsChange)
                 SettingToggleRow("Large controls", state.settings.largeControls, onLargeControlsChange)
+                SceneDisplayCountRow(state.settings.sceneDisplayCount, onSceneDisplayCountChange)
+                Button(onClick = onToggleLayoutEditMode) {
+                    Text(if (state.layoutEditMode) "Done editing layout" else "Edit layout")
+                }
+                if (state.layoutEditMode) {
+                    Text("Preview height: ${state.settings.previewHeightPercent}%", color = Color.White)
+                    Slider(
+                        value = state.settings.previewHeightPercent.toFloat(),
+                        onValueChange = { onPreviewHeightChange(it.roundToInt()) },
+                        valueRange = 25f..70f,
+                        steps = 44
+                    )
+                    Text("Scene columns: ${state.settings.sceneColumns}", color = Color.White)
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        (2..6).forEach { columns ->
+                            FilterChip(
+                                selected = columns == state.settings.sceneColumns,
+                                onClick = { onSceneColumnsChange(columns) },
+                                label = { Text(columns.toString()) }
+                            )
+                        }
+                    }
+                }
 
                 OutlinedTextField(
                     value = state.settings.whepUrl,
@@ -844,6 +887,28 @@ private fun RearrangeScenesScreen(
                         Button(onClick = { onMoveDown(scene.name) }) { Text("Down") }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SceneDisplayCountRow(
+    selectedCount: Int,
+    onCountChange: (Int) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("Scenes shown", color = Color.White)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            listOf(8, 9, 10, 12, 15, 20).forEach { count ->
+                FilterChip(
+                    selected = count == selectedCount,
+                    onClick = { onCountChange(count) },
+                    label = { Text(count.toString()) }
+                )
             }
         }
     }

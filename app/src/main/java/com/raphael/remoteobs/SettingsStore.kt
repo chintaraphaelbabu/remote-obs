@@ -19,6 +19,9 @@ class SettingsStore(context: Context) {
             operatorPin = prefs.getString("operatorPin", "") ?: "",
             selectedTransition = prefs.getString("selectedTransition", "Cut") ?: "Cut",
             transitionDurationMs = prefs.getInt("transitionDurationMs", 300),
+            sceneDisplayCount = prefs.getInt("sceneDisplayCount", 10).coerceIn(8, 20),
+            previewHeightPercent = prefs.getInt("previewHeightPercent", 55).coerceIn(25, 70),
+            sceneColumns = prefs.getInt("sceneColumns", 4).coerceIn(2, 6),
             sceneOrder = readStringList("sceneOrder"),
             pinnedScenes = readStringList("pinnedScenes").toSet(),
             whepUrl = prefs.getString("whepUrl", "") ?: ""
@@ -38,6 +41,9 @@ class SettingsStore(context: Context) {
             .putString("operatorPin", settings.operatorPin)
             .putString("selectedTransition", settings.selectedTransition)
             .putInt("transitionDurationMs", settings.transitionDurationMs)
+            .putInt("sceneDisplayCount", settings.sceneDisplayCount.coerceIn(8, 20))
+            .putInt("previewHeightPercent", settings.previewHeightPercent.coerceIn(25, 70))
+            .putInt("sceneColumns", settings.sceneColumns.coerceIn(2, 6))
             .putString("sceneOrder", JSONArray(settings.sceneOrder).toString())
             .putString("pinnedScenes", JSONArray(settings.pinnedScenes.toList()).toString())
             .putString("whepUrl", settings.whepUrl)

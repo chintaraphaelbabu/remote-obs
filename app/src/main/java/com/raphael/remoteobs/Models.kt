@@ -41,6 +41,9 @@ data class AppSettings(
     val operatorPin: String = "",
     val selectedTransition: String = "Cut",
     val transitionDurationMs: Int = 300,
+    val sceneDisplayCount: Int = 10,
+    val previewHeightPercent: Int = 55,
+    val sceneColumns: Int = 4,
     val sceneOrder: List<String> = emptyList(),
     val pinnedScenes: Set<String> = emptySet(),
     val whepUrl: String = ""
@@ -57,6 +60,7 @@ data class UiState(
     val scenes: List<SceneEntry> = emptyList(),
     val availableTransitions: List<String> = listOf("Cut", "Fade"),
     val menuOpen: Boolean = false,
+    val layoutEditMode: Boolean = false,
     val rearrangeMode: Boolean = false,
     val operatorUnlocked: Boolean = true,
     val reconnectAttempt: Int = 0,

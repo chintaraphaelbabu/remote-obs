@@ -118,6 +118,8 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun closeRearrangeMode() = updateState { it.copy(rearrangeMode = false) }
 
+    fun toggleLayoutEditMode() = updateState { it.copy(layoutEditMode = !it.layoutEditMode) }
+
     fun setHost(value: String) = updateSettings { it.copy(host = value.trim()) }
 
     fun setPort(value: String) {
@@ -133,6 +135,18 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
     fun setHapticsEnabled(enabled: Boolean) = updateSettings { it.copy(hapticsEnabled = enabled) }
 
     fun setLargeControls(enabled: Boolean) = updateSettings { it.copy(largeControls = enabled) }
+
+    fun setSceneDisplayCount(count: Int) = updateSettings {
+        it.copy(sceneDisplayCount = count.coerceIn(8, 20))
+    }
+
+    fun setPreviewHeightPercent(percent: Int) = updateSettings {
+        it.copy(previewHeightPercent = percent.coerceIn(25, 70))
+    }
+
+    fun setSceneColumns(columns: Int) = updateSettings {
+        it.copy(sceneColumns = columns.coerceIn(2, 6))
+    }
 
     fun setWhepUrl(value: String) = updateSettings { it.copy(whepUrl = value.trim()) }
 
