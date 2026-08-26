@@ -59,17 +59,45 @@ if ($mtx.HasExited) { Die "MediaMTX failed to start. Check $MediamtxDir\mediamtx
 $projector = "OBS Multiview"
 Write-Host "Capturing '$projector' → RTMP :1935..." -ForegroundColor Green
 Start-Sleep 3
+$availableEncoders = ffmpeg -hide_banner -encoders 2>$null
+$videoEncoder = "libx264"
+$encoderArgs = @("-preset", "ultrafast", "-tune", "zerolatency")
+if ($availableEncoders -match "h264_nvenc") {
+    $videoEncoder = "h264_nvenc"
+    $encoderArgs = @("-preset", "p1", "-tune", "ull", "-rc", "cbr")
+} elseif ($availableEncoders -match "h264_amf") {
+    $videoEncoder = "h264_amf"
+    $encoderArgs = @("-quality", "speed", "-usage", "ultralowlatency", "-rc", "cbr")
+} elseif ($availableEncoders -match "h264_qsv") {
+    $videoEncoder = "h264_qsv"
+    $encoderArgs = @("-preset", "veryfast", "-look_ahead", "0")
+}
+Write-Host "Using H.264 encoder '$videoEncoder' at $Fps FPS." -ForegroundColor Green
 $ffmpegArgs = @(
-    "-f", "gdigrab", "-framerate", "$Fps", "-draw_mouse", "0", "-thread_queue_size", "512", "-i", "title=$projector"
-    "-vf", "fps=$Fps", "-fps_mode", "cfr"
-    "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency"
-    "-b:v", "6M", "-maxrate", "6M", "-bufsize", "3M"
+    "-f", "gdigrab", "-framerate", "$Fps", "-draw_mouse", "0", "-thread_queue_size", "512", "-rtbufsize", "256M", "-i", "title=$projector"
+    "-vf", "scale=1280:-2,fps=$Fps", "-fps_mode", "cfr"
+    "-c:v", $videoEncoder
+    $encoderArgs
+    "-b:v", "4M", "-maxrate", "4M", "-bufsize", "2M"
     "-g", "$Fps", "-keyint_min", "$Fps", "-sc_threshold", "0"
     "-pix_fmt", "yuv420p", "-f", "flv", "rtmp://localhost:1935/live/multiview"
 )
 $ff = Start-Process -FilePath "ffmpeg" -ArgumentList $ffmpegArgs -WindowStyle Hidden -PassThru
 Start-Sleep 1
-if ($ff.HasExited) { Die "ffmpeg failed. Is OBS running with Virtual Camera enabled?" }
+if ($ff.HasExited -and $videoEncoder -ne "libx264") {
+    Write-Host "Hardware encoder '$videoEncoder' unavailable; falling back to libx264." -ForegroundColor Yellow
+    $ffmpegArgs = @(
+        "-f", "gdigrab", "-framerate", "$Fps", "-draw_mouse", "0", "-thread_queue_size", "512", "-rtbufsize", "256M", "-i", "title=$projector"
+        "-vf", "scale=1280:-2,fps=$Fps", "-fps_mode", "cfr"
+        "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency"
+        "-b:v", "4M", "-maxrate", "4M", "-bufsize", "2M"
+        "-g", "$Fps", "-keyint_min", "$Fps", "-sc_threshold", "0"
+        "-pix_fmt", "yuv420p", "-f", "flv", "rtmp://localhost:1935/live/multiview"
+    )
+    $ff = Start-Process -FilePath "ffmpeg" -ArgumentList $ffmpegArgs -WindowStyle Hidden -PassThru
+    Start-Sleep 1
+}
+if ($ff.HasExited) { Die "ffmpeg failed. Is OBS running with the Multiview projector open?" }
 
 # ─── 6. start mDNS ─────────────────────────────────────────────
 Write-Host "Starting mDNS advertisement..." -ForegroundColor Green
