@@ -545,7 +545,7 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
                         }
                     }
                     val thumbnailScenes = _state.value.scenes
-                    repeat(minOf(4, thumbnailScenes.size)) {
+                    repeat(minOf(2, thumbnailScenes.size)) {
                         if (thumbnailScenes.isEmpty()) return@repeat
                         var sceneName: String? = null
                         repeat(thumbnailScenes.size) {
@@ -560,9 +560,9 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
                             launch {
                                 gateway?.getSourceScreenshot(
                                     sourceName = requestedScene,
-                                    imageWidth = 320,
-                                    imageHeight = 180,
-                                    imageQuality = 45
+                                    imageWidth = 240,
+                                    imageHeight = 135,
+                                    imageQuality = 35
                                 ) { img ->
                                     if (img != null) {
                                         updateState { it.copy(sceneImages = it.sceneImages + (requestedScene to img)) }
@@ -574,7 +574,7 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
                     }
                     tick++
                 }
-                delay(50)
+                delay(100)
             }
         }
     }
