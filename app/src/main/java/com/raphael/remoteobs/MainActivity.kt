@@ -453,14 +453,14 @@ private fun SceneGrid(
     modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val visibleScenes = state.scenes.take(maxScenes)
+        val visibleScenes = if (maxScenes == 0) state.scenes else state.scenes.take(maxScenes)
         val rowCount = ceil(visibleScenes.size.toFloat() / columns).toInt().coerceAtLeast(1)
         val tileHeight = ((maxHeight - 8.dp * (rowCount - 1)) / rowCount)
             .coerceIn(if (scale > 1f) 58.dp else 48.dp, 180.dp)
         LazyVerticalGrid(
             columns = GridCells.Fixed(columns),
             modifier = Modifier.fillMaxSize(),
-            userScrollEnabled = false,
+            userScrollEnabled = true,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -903,11 +903,11 @@ private fun SceneDisplayCountRow(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            listOf(8, 9, 10, 12, 15, 20).forEach { count ->
+            listOf(0, 8, 9, 10, 12, 15, 20).forEach { count ->
                 FilterChip(
                     selected = count == selectedCount,
                     onClick = { onCountChange(count) },
-                    label = { Text(count.toString()) }
+                    label = { Text(if (count == 0) "All" else count.toString()) }
                 )
             }
         }

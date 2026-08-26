@@ -137,7 +137,7 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
     fun setLargeControls(enabled: Boolean) = updateSettings { it.copy(largeControls = enabled) }
 
     fun setSceneDisplayCount(count: Int) = updateSettings {
-        it.copy(sceneDisplayCount = count.coerceIn(8, 20))
+        it.copy(sceneDisplayCount = count.coerceIn(0, 20))
     }
 
     fun setPreviewHeightPercent(percent: Int) = updateSettings {
