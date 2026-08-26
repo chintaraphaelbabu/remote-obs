@@ -56,12 +56,13 @@ Start-Sleep 2
 if ($mtx.HasExited) { Die "MediaMTX failed to start. Check $MediamtxDir\mediamtx.log" }
 
 # ─── 5. start ffmpeg capture ───────────────────────────────────
-$cam = "OBS Virtual Camera"
-Write-Host "Capturing '$cam' → RTMP :1935..." -ForegroundColor Green
+$projector = "OBS Multiview"
+Write-Host "Capturing '$projector' → RTMP :1935..." -ForegroundColor Green
+Start-Sleep 3
 $ffmpegArgs = @(
-    "-f", "dshow", "-framerate", "$Fps", "-i", "video=$cam"
+    "-f", "gdigrab", "-framerate", "$Fps", "-draw_mouse", "0", "-i", "title=$projector"
     "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency"
-    "-f", "flv", "rtmp://localhost:1935/live/program"
+    "-pix_fmt", "yuv420p", "-f", "flv", "rtmp://localhost:1935/live/multiview"
 )
 $ff = Start-Process -FilePath "ffmpeg" -ArgumentList $ffmpegArgs -WindowStyle Hidden -PassThru
 Start-Sleep 1
@@ -87,12 +88,12 @@ $title = @"
 ╠══════════════════════════════════════════════════╣
 ║                                                  ║
 ║  Open Remote OBS app → Menu →                   ║
-║  Enter in "Program WHEP URL":                    ║
+║  Enter in "Multiview WHEP URL":                  ║
 ║                                                  ║
-║  http://$ip:8889/whep/program                    ║
+║  http://$ip:8889/whep/multiview                  ║
 ║                                                  ║
 ║  The app should auto-discover via mDNS.          ║
-║  Preview in app uses screenshots (no WHEP).      ║
+║  Zoom keeps using OBS Virtual Camera.             ║
 ║                                                  ║
 ║  Close this window to stop the relay.            ║
 ║                                                  ║
