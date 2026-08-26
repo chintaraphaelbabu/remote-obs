@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 class RemoteObsViewModel(application: Application) : AndroidViewModel(application) {
     private val settingsStore = SettingsStore(application)
@@ -31,7 +32,7 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
     private var screenshotJob: Job? = null
     private var previewScreenshotInFlight = false
     private var programScreenshotInFlight = false
-    private var sceneThumbnailInFlight = false
+    private val sceneThumbnailsInFlight = ConcurrentHashMap.newKeySet<String>()
     private var sceneThumbnailIndex = 0
     private var manualDisconnect = false
     private var nsd: NsdDiscovery? = null
@@ -98,7 +99,7 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
         screenshotJob = null
         previewScreenshotInFlight = false
         programScreenshotInFlight = false
-        sceneThumbnailInFlight = false
+        sceneThumbnailsInFlight.clear()
         sceneThumbnailIndex = 0
         gateway()?.disconnect()
         updateState {
@@ -331,7 +332,7 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
         screenshotJob = null
         previewScreenshotInFlight = false
         programScreenshotInFlight = false
-        sceneThumbnailInFlight = false
+        sceneThumbnailsInFlight.clear()
         sceneThumbnailIndex = 0
         if (manualDisconnect) {
             updateState {
@@ -544,23 +545,31 @@ class RemoteObsViewModel(application: Application) : AndroidViewModel(applicatio
                         }
                     }
                     val thumbnailScenes = _state.value.scenes
-                    if (thumbnailScenes.isNotEmpty() && !sceneThumbnailInFlight) {
-                        if (sceneThumbnailIndex >= thumbnailScenes.size) sceneThumbnailIndex = 0
-                        val sceneName = thumbnailScenes[sceneThumbnailIndex].name
-                        sceneThumbnailIndex++
-                        sceneThumbnailInFlight = true
-                        launch {
-                            gateway?.getSourceScreenshot(
-                                sourceName = sceneName,
-                                imageWidth = 320,
-                                imageHeight = 180,
-                                imageQuality = 45
-                            ) { img ->
-                                if (img != null) {
-                                    updateState { it.copy(sceneImages = it.sceneImages + (sceneName to img)) }
-                                }
-                                sceneThumbnailInFlight = false
-                            } ?: run { sceneThumbnailInFlight = false }
+                    repeat(minOf(4, thumbnailScenes.size)) {
+                        if (thumbnailScenes.isEmpty()) return@repeat
+                        var sceneName: String? = null
+                        repeat(thumbnailScenes.size) {
+                            if (sceneName == null) {
+                                if (sceneThumbnailIndex >= thumbnailScenes.size) sceneThumbnailIndex = 0
+                                val candidate = thumbnailScenes[sceneThumbnailIndex].name
+                                sceneThumbnailIndex++
+                                if (sceneThumbnailsInFlight.add(candidate)) sceneName = candidate
+                            }
+                        }
+                        sceneName?.let { requestedScene ->
+                            launch {
+                                gateway?.getSourceScreenshot(
+                                    sourceName = requestedScene,
+                                    imageWidth = 320,
+                                    imageHeight = 180,
+                                    imageQuality = 45
+                                ) { img ->
+                                    if (img != null) {
+                                        updateState { it.copy(sceneImages = it.sceneImages + (requestedScene to img)) }
+                                    }
+                                    sceneThumbnailsInFlight.remove(requestedScene)
+                                } ?: run { sceneThumbnailsInFlight.remove(requestedScene) }
+                            }
                         }
                     }
                     tick++
