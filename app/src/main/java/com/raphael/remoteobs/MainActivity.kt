@@ -383,7 +383,6 @@ private fun MainControlSurface(
             columns = sceneColumns,
             scale = scale,
             onSceneClick = onSceneClick,
-            maxScenes = state.settings.sceneDisplayCount,
             modifier = Modifier.weight((100 - state.settings.previewHeightPercent).toFloat())
         )
     }
@@ -449,11 +448,10 @@ private fun SceneGrid(
     columns: Int,
     scale: Float,
     onSceneClick: (String) -> Unit,
-    maxScenes: Int,
     modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val visibleScenes = if (maxScenes == 0) state.scenes else state.scenes.take(maxScenes)
+        val visibleScenes = state.scenes
         val rowCount = ceil(visibleScenes.size.toFloat() / columns).toInt().coerceAtLeast(1)
         val tileHeight = ((maxHeight - 8.dp * (rowCount - 1)) / rowCount)
             .coerceIn(if (scale > 1f) 58.dp else 48.dp, 180.dp)
