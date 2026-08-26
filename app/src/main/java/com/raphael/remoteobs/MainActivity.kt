@@ -465,6 +465,7 @@ private fun SceneGrid(
             items(visibleScenes, key = { it.name }) { scene ->
                 SceneTile(
                     scene = scene,
+                    imageData = state.sceneImages[scene.name],
                     previewScene = state.previewScene,
                     programScene = state.programScene,
                     pendingTakeScene = state.pendingTakeScene,
@@ -479,6 +480,7 @@ private fun SceneGrid(
 @Composable
 private fun SceneTile(
     scene: SceneEntry,
+    imageData: String?,
     previewScene: String,
     programScene: String,
     pendingTakeScene: String,
@@ -500,6 +502,25 @@ private fun SceneTile(
             .clickable(onClick = onClick)
             .padding(8.dp)
     ) {
+        if (!imageData.isNullOrBlank()) {
+            var bitmap by remember(imageData) { mutableStateOf<Bitmap?>(null) }
+            LaunchedEffect(imageData) {
+                bitmap = withContext(Dispatchers.Default) {
+                    try {
+                        val bytes = Base64.decode(imageData, Base64.DEFAULT)
+                        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    } catch (e: Exception) { null }
+                }
+            }
+            bitmap?.let {
+                Image(
+                    bitmap = it.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
         if (scene.name == pendingTakeScene && scene.name != programScene) {
             Text(
                 text = "TAKE",

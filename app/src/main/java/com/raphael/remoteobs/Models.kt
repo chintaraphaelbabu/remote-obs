@@ -58,6 +58,7 @@ data class UiState(
     val programScene: String = "",
     val pendingTakeScene: String = "",
     val scenes: List<SceneEntry> = emptyList(),
+    val sceneImages: Map<String, String> = emptyMap(),
     val availableTransitions: List<String> = listOf("Cut", "Fade"),
     val menuOpen: Boolean = false,
     val layoutEditMode: Boolean = false,

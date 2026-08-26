@@ -181,7 +181,13 @@ class ObsGateway(
         requestSceneList()
     }
 
-    fun getSourceScreenshot(sourceName: String, onResult: (String?) -> Unit) {
+    fun getSourceScreenshot(
+        sourceName: String,
+        imageWidth: Int = 1280,
+        imageHeight: Int = 720,
+        imageQuality: Int = 60,
+        onResult: (String?) -> Unit
+    ) {
         if (socket == null || sourceName.isBlank()) {
             onResult(null)
             return
@@ -189,9 +195,9 @@ class ObsGateway(
         val params = JSONObject()
             .put("sourceName", sourceName)
             .put("imageFormat", "jpg")
-            .put("imageWidth", 1280)
-            .put("imageHeight", 720)
-            .put("imageCompressionQuality", 60)
+            .put("imageWidth", imageWidth)
+            .put("imageHeight", imageHeight)
+            .put("imageCompressionQuality", imageQuality)
 
         sendRequest("GetSourceScreenshot", params) { data, success, _ ->
             if (success) {
