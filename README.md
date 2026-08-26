@@ -36,3 +36,4 @@ Double-click `Start Remote OBS Relay.bat` after OBS is open.
 - YouTube stream is untouched — relay uses Virtual Camera, not the stream output
 - Both devices on same Wi-Fi
 - Preview stays screenshot-based (OBS only outputs one video feed)
+"# remote-obs" 
