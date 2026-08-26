@@ -60,8 +60,11 @@ $projector = "OBS Multiview"
 Write-Host "Capturing '$projector' → RTMP :1935..." -ForegroundColor Green
 Start-Sleep 3
 $ffmpegArgs = @(
-    "-f", "gdigrab", "-framerate", "$Fps", "-draw_mouse", "0", "-i", "title=$projector"
+    "-f", "gdigrab", "-framerate", "$Fps", "-draw_mouse", "0", "-thread_queue_size", "512", "-i", "title=$projector"
+    "-vf", "fps=$Fps", "-fps_mode", "cfr"
     "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency"
+    "-b:v", "6M", "-maxrate", "6M", "-bufsize", "3M"
+    "-g", "$Fps", "-keyint_min", "$Fps", "-sc_threshold", "0"
     "-pix_fmt", "yuv420p", "-f", "flv", "rtmp://localhost:1935/live/multiview"
 )
 $ff = Start-Process -FilePath "ffmpeg" -ArgumentList $ffmpegArgs -WindowStyle Hidden -PassThru
